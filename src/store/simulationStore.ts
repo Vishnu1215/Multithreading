@@ -77,6 +77,23 @@ interface SimulationState {
   tick: (deltaRealMs: number) => void;
 }
 
+const defaultAuthor: AuthorProfile = {
+  studentName: 'Hariprasad S.',
+  rollNo: 'CS-2026-M042',
+  guideName: 'Dr. V. K. Ramanathan, Dept of Computer Science',
+  courseName: 'CS402: Operating Systems & Advanced Architecture',
+};
+
+const getSavedAuthor = (): AuthorProfile => {
+  try {
+    const saved = localStorage.getItem('threadlab_author');
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // fallback
+  }
+  return defaultAuthor;
+};
+
 const defaultConfig: SimulationConfig = {
   threadCount: 4,
   workload: 'matrix',
@@ -89,7 +106,28 @@ const defaultConfig: SimulationConfig = {
   seed: 42,
 };
 
-const initialMetrics = calculateMetrics(defaultConfig);
+const getSavedConfig = (): SimulationConfig => {
+  try {
+    const saved = localStorage.getItem('threadlab_config');
+    if (saved) return { ...defaultConfig, ...JSON.parse(saved) };
+  } catch {
+    // fallback
+  }
+  return defaultConfig;
+};
+
+const getSavedHistory = (): RunResult[] => {
+  try {
+    const saved = localStorage.getItem('threadlab_history');
+    if (saved) return JSON.parse(saved);
+  } catch {
+    // fallback
+  }
+  return [...BENCHMARK_RUNS];
+};
+
+const initialConfig = getSavedConfig();
+const initialMetrics = calculateMetrics(initialConfig);
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   theme: (localStorage.getItem('threadlab_theme') as 'dark' | 'light') || 'dark',
@@ -122,17 +160,25 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set({ quizBestScore: score });
   },
 
-  author: {
-    studentName: 'Hariprasad S.',
-    rollNo: 'CS-2026-M042',
-    guideName: 'Dr. V. K. Ramanathan, Dept of Computer Science',
-    courseName: 'CS402: Operating Systems & Advanced Architecture',
+  author: getSavedAuthor(),
+  setAuthor: (newFields) => {
+    const updated = { ...get().author, ...newFields };
+    try {
+      localStorage.setItem('threadlab_author', JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+    set({ author: updated });
   },
-  setAuthor: (newFields) => set((s) => ({ author: { ...s.author, ...newFields } })),
 
-  config: defaultConfig,
+  config: initialConfig,
   setConfig: (partial) => {
     const updated = { ...get().config, ...partial };
+    try {
+      localStorage.setItem('threadlab_config', JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
     const metrics = calculateMetrics(updated);
     set({
       config: updated,
@@ -147,8 +193,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   elapsedSimMs: 0,
   totalSimDurationMs: 1200,
 
-  threads: SimulationEventGenerator.initializeThreads(defaultConfig),
-  cores: SimulationEventGenerator.initializeCores(defaultConfig.cores),
+  threads: SimulationEventGenerator.initializeThreads(initialConfig),
+  cores: SimulationEventGenerator.initializeCores(initialConfig.cores),
   events: [],
   currentPhase: 1,
   explanationText: 'Ready to launch. Click "Run Simulation" or choose a benchmark preset to begin.',
@@ -156,10 +202,17 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   setExplanationMode: (mode) => set({ explanationMode: mode }),
 
   currentMetrics: initialMetrics,
-  history: [...BENCHMARK_RUNS],
+  history: getSavedHistory(),
   selectedHistoryId: null,
   setSelectedHistoryId: (id) => set({ selectedHistoryId: id }),
-  clearHistory: () => set({ history: [] }),
+  clearHistory: () => {
+    try {
+      localStorage.removeItem('threadlab_history');
+    } catch {
+      // ignore
+    }
+    set({ history: [] });
+  },
 
   startSimulation: () => {
     const { config } = get();
@@ -237,7 +290,6 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         lState = 'TASK_RUNNING';
       } else if (phase === 3) {
         const baseNorm = (newProgress - 30) / 50; // 0 to 1
-        // Add thread slight variance
         const variance = (idx % 2 === 0 ? 0.05 : -0.05);
         tProgress = Math.min(95, Math.max(0, Math.round((baseNorm + variance) * 100)));
         tState = 'Running';
@@ -294,6 +346,13 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         notes: `Simulated run with ${state.config.threadCount} threads on ${state.config.cores} cores.`,
       };
 
+      const newHistory = [newResult, ...state.history];
+      try {
+        localStorage.setItem('threadlab_history', JSON.stringify(newHistory.slice(0, 30)));
+      } catch {
+        // ignore
+      }
+
       set({
         status: 'completed',
         progress: 100,
@@ -303,7 +362,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         cores: updatedCores,
         events: allEvents,
         explanationText: getExplanation(5, state.config, state.explanationMode),
-        history: [newResult, ...state.history],
+        history: newHistory,
       });
     } else {
       set({

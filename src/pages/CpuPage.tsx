@@ -1,10 +1,10 @@
-import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import React, { useState } from 'react';
+import { Card } from '@/components/ui/Card';
 import { CoreTile } from '@/components/cpu/CoreTile';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useSimulationStore } from '@/store/simulationStore';
-import { Cpu, Zap, RotateCcw, Play, Pause, Activity } from 'lucide-react';
+import { Cpu, Zap, RotateCcw, Play, Pause, Activity, ArrowRightLeft, Layers } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export const CpuPage: React.FC = () => {
@@ -13,11 +13,13 @@ export const CpuPage: React.FC = () => {
   const config = useSimulationStore((s) => s.config);
   const setConfig = useSimulationStore((s) => s.setConfig);
   const status = useSimulationStore((s) => s.status);
+  const currentMetrics = useSimulationStore((s) => s.currentMetrics);
   const startSimulation = useSimulationStore((s) => s.startSimulation);
   const pauseSimulation = useSimulationStore((s) => s.pauseSimulation);
   const resumeSimulation = useSimulationStore((s) => s.resumeSimulation);
   const resetSimulation = useSimulationStore((s) => s.resetSimulation);
-  const [viewMode, setViewMode] = React.useState<'parallel' | 'concurrency'>('parallel');
+
+  const [viewMode, setViewMode] = useState<'parallel' | 'concurrency'>('parallel');
 
   // Ready Queue: threads that are Ready or Waiting
   const readyQueue = threads.filter((t) => t.state === 'Ready' || (status === 'running' && t.state === 'Waiting'));
@@ -27,6 +29,9 @@ export const CpuPage: React.FC = () => {
     utilization: c.utilization,
     temp: c.temperatureC,
   }));
+
+  const activeCoresCount = viewMode === 'concurrency' ? 1 : config.cores;
+  const displayedCores = cores.slice(0, activeCoresCount);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -44,10 +49,12 @@ export const CpuPage: React.FC = () => {
         </div>
 
         {/* View toggle */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex bg-secondary p-1 rounded-xl border border-border/40 text-xs">
             <button
-              onClick={() => setViewMode('parallel')}
+              onClick={() => {
+                setViewMode('parallel');
+              }}
               className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
                 viewMode === 'parallel' ? 'bg-card text-foreground shadow-sm font-semibold' : 'text-muted-foreground'
               }`}
@@ -55,7 +62,9 @@ export const CpuPage: React.FC = () => {
               Multi-Core Parallelism ({config.cores} Cores)
             </button>
             <button
-              onClick={() => setViewMode('concurrency')}
+              onClick={() => {
+                setViewMode('concurrency');
+              }}
               className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
                 viewMode === 'concurrency' ? 'bg-card text-foreground shadow-sm font-semibold' : 'text-muted-foreground'
               }`}
@@ -63,30 +72,65 @@ export const CpuPage: React.FC = () => {
               Single-Core Concurrency (1 Core)
             </button>
           </div>
+
+          {/* Core count adjuster */}
+          {viewMode === 'parallel' && (
+            <div className="flex bg-secondary p-1 rounded-xl border border-border/40 text-xs">
+              {[2, 4, 8].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setConfig({ cores: c as any })}
+                  className={`px-2.5 py-1 rounded-lg font-mono font-bold transition-colors ${
+                    config.cores === c ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground'
+                  }`}
+                >
+                  {c}C
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Concurrency vs Parallelism Educational Banner */}
+      {viewMode === 'concurrency' && (
+        <Card className="p-4 bg-amber-500/10 border-amber-500/30 text-amber-500 flex items-start gap-3">
+          <Layers className="w-5 h-5 mt-0.5 shrink-0" />
+          <div className="space-y-1 text-xs leading-relaxed">
+            <strong className="font-bold">Concurrency Mode Active (Single Core):</strong>
+            <p className="text-foreground">
+              In single-core concurrency, multiple threads do NOT execute simultaneously on hardware. Instead, 
+              the kernel performs rapid time slicing. Each switch incurs a ~3.5µs register save/restore overhead 
+              plus L1 cache evictions. No true hardware speedup occurs.
+            </p>
+          </div>
+        </Card>
+      )}
 
       {/* Main Processor Die & Ready Queue */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Silicon Die Grid (8 cols) */}
         <div className="lg:col-span-8 space-y-6">
           <Card className="p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/40 pb-3 gap-2">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
                 <h3 className="font-heading font-bold text-sm text-foreground">
                   Host CPU Die: AMD EPYC / Intel Xeon (Virtual SMP Cores)
                 </h3>
               </div>
-              <div className="flex items-center gap-3 text-xs font-mono">
+              <div className="flex items-center gap-4 text-xs font-mono">
                 <span className="text-muted-foreground">Governor: <strong className="text-foreground">performance</strong></span>
                 <span className="text-muted-foreground">Freq: <strong className="text-foreground">3.20 GHz</strong></span>
+                <span className="text-muted-foreground">
+                  Total Switches: <strong className="text-amber-500">{currentMetrics.totalCtxSwitches}</strong>
+                </span>
               </div>
             </div>
 
             {/* Processor Die Cores Layout */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {cores.map((c) => {
+              {displayedCores.map((c) => {
                 const assignedThread = threads.find((t) => t.threadId === c.threadId);
                 return (
                   <CoreTile
@@ -99,18 +143,24 @@ export const CpuPage: React.FC = () => {
               })}
             </div>
 
-            {/* Context Switch Indicator Flash */}
-            {config.threadCount > config.cores && (
-              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs text-amber-500">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 animate-bounce" />
-                  <span>
-                    <strong>Oversubscription Detected:</strong> {config.threadCount} threads sharing {config.cores} cores. 
-                    CFS preemption is triggering frequent context switches (~3.5µs save/restore regs overhead).
+            {/* Context Switch Indicator & Cost Breakdown */}
+            <div className="p-4 rounded-xl bg-secondary/50 border border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                <div>
+                  <span className="font-bold text-foreground">Linux Context Switch Latency: </span>
+                  <span className="text-muted-foreground">
+                    ~3.5µs per preemptive switch (x86_64 CR3 flush + segment/GPR save & restore)
                   </span>
                 </div>
               </div>
-            )}
+              <div className="text-right font-mono shrink-0">
+                <span className="text-muted-foreground">Overhead Penalty: </span>
+                <strong className="text-amber-500">
+                  {(currentMetrics.totalCtxSwitches * 0.0035).toFixed(3)} ms
+                </strong>
+              </div>
+            </div>
           </Card>
 
           {/* Core Load Chart */}

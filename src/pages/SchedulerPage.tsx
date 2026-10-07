@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { 
@@ -10,7 +10,7 @@ import {
   scheduleSJF, 
   SchedulerResult 
 } from '@/engine/schedulers';
-import { GitBranch, Plus, Shuffle, Play, RotateCcw, Award } from 'lucide-react';
+import { GitBranch, Shuffle, Award, ToggleLeft, ToggleRight, Sparkles } from 'lucide-react';
 
 const INITIAL_PROCESSES: ProcessItem[] = [
   { id: 'p1', name: 'Task 1 (Worker)', arrivalTime: 0, burstTime: 8, priority: 3, color: '#6366F1' },
@@ -23,20 +23,21 @@ export const SchedulerPage: React.FC = () => {
   const [processes, setProcesses] = useState<ProcessItem[]>(INITIAL_PROCESSES);
   const [activePolicy, setActivePolicy] = useState<'FCFS' | 'RR' | 'Priority' | 'SJF'>('RR');
   const [quantum, setQuantum] = useState<number>(4);
+  const [preemptive, setPreemptive] = useState<boolean>(true);
   const [compareMode, setCompareMode] = useState<boolean>(false);
 
   // Compute Active Result
   let currentResult: SchedulerResult;
   if (activePolicy === 'FCFS') currentResult = scheduleFCFS(processes);
-  else if (activePolicy === 'SJF') currentResult = scheduleSJF(processes);
-  else if (activePolicy === 'Priority') currentResult = schedulePriority(processes);
+  else if (activePolicy === 'SJF') currentResult = scheduleSJF(processes, preemptive);
+  else if (activePolicy === 'Priority') currentResult = schedulePriority(processes, preemptive);
   else currentResult = scheduleRR(processes, quantum);
 
   // Compute all 4 for comparison
   const allResults = {
     FCFS: scheduleFCFS(processes),
-    SJF: scheduleSJF(processes),
-    Priority: schedulePriority(processes),
+    SJF: scheduleSJF(processes, preemptive),
+    Priority: schedulePriority(processes, preemptive),
     RR: scheduleRR(processes, quantum),
   };
 
@@ -51,6 +52,26 @@ export const SchedulerPage: React.FC = () => {
       color: colors[i % colors.length],
     }));
     setProcesses(randomized);
+  };
+
+  const applyPreset = (preset: 'balanced' | 'convoy' | 'priority_skew') => {
+    if (preset === 'convoy') {
+      setProcesses([
+        { id: 'p1', name: 'T1 (Heavy CPU)', arrivalTime: 0, burstTime: 20, priority: 3, color: '#6366F1' },
+        { id: 'p2', name: 'T2 (Quick I/O)', arrivalTime: 1, burstTime: 2, priority: 1, color: '#EC4899' },
+        { id: 'p3', name: 'T3 (Quick I/O)', arrivalTime: 2, burstTime: 2, priority: 2, color: '#10B981' },
+        { id: 'p4', name: 'T4 (Quick I/O)', arrivalTime: 3, burstTime: 1, priority: 1, color: '#F59E0B' },
+      ]);
+    } else if (preset === 'priority_skew') {
+      setProcesses([
+        { id: 'p1', name: 'Realtime Audio', arrivalTime: 0, burstTime: 6, priority: 1, color: '#EC4899' },
+        { id: 'p2', name: 'UI Rendering', arrivalTime: 1, burstTime: 4, priority: 2, color: '#6366F1' },
+        { id: 'p3', name: 'Background Sync', arrivalTime: 2, burstTime: 12, priority: 5, color: '#F59E0B' },
+        { id: 'p4', name: 'Telemetry Log', arrivalTime: 2, burstTime: 8, priority: 4, color: '#10B981' },
+      ]);
+    } else {
+      setProcesses(INITIAL_PROCESSES);
+    }
   };
 
   const totalTime = currentResult.gantt.length > 0 
@@ -68,25 +89,25 @@ export const SchedulerPage: React.FC = () => {
           </div>
           <h1 className="text-3xl font-bold font-heading text-foreground">Scheduler Visualization</h1>
           <p className="text-xs text-muted-foreground">
-            Interactive Gantt timeline execution of textbook scheduling algorithms compared against Linux Completely Fair Scheduler (CFS).
+            Interactive Gantt timeline execution of textbook scheduling algorithms (Preemptive/Non-preemptive) compared against Linux Completely Fair Scheduler (CFS).
           </p>
         </div>
 
-        {/* Policy Selector */}
+        {/* Presets and Compare mode */}
         <div className="flex flex-wrap items-center gap-2">
-          {(['FCFS', 'RR', 'Priority', 'SJF'] as const).map((policy) => (
-            <button
-              key={policy}
-              onClick={() => setActivePolicy(policy)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                activePolicy === policy
-                  ? 'bg-primary text-white border-primary shadow-sm'
-                  : 'bg-secondary/60 border-border/40 text-muted-foreground hover:bg-secondary'
-              }`}
-            >
-              {policy}
-            </button>
-          ))}
+          <div className="flex items-center gap-1.5 mr-2">
+            <span className="text-xs text-muted-foreground">Presets:</span>
+            <Button size="sm" variant="ghost" onClick={() => applyPreset('balanced')} className="text-xs">
+              Balanced
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => applyPreset('convoy')} className="text-xs">
+              Convoy Effect
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => applyPreset('priority_skew')} className="text-xs">
+              Priority Inversion
+            </Button>
+          </div>
+
           <Button
             size="sm"
             variant={compareMode ? 'primary' : 'outline'}
@@ -98,12 +119,60 @@ export const SchedulerPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Policy Selector bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 p-3.5 rounded-2xl bg-secondary/40 border border-border/40">
+        <div className="flex items-center gap-2">
+          {(['FCFS', 'RR', 'Priority', 'SJF'] as const).map((policy) => (
+            <button
+              key={policy}
+              onClick={() => setActivePolicy(policy)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                activePolicy === policy
+                  ? 'bg-primary text-white border-primary shadow-sm'
+                  : 'bg-card border-border/40 text-muted-foreground hover:bg-secondary'
+              }`}
+            >
+              {policy}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4">
+          {(activePolicy === 'SJF' || activePolicy === 'Priority') && (
+            <button
+              onClick={() => setPreemptive(!preemptive)}
+              className="flex items-center gap-2 text-xs font-mono font-medium text-foreground bg-card px-3 py-1.5 rounded-xl border border-border/50 hover:bg-secondary/60 transition-colors"
+            >
+              <span>Preemptive Mode:</span>
+              <span className={preemptive ? 'text-emerald-500 font-bold' : 'text-slate-400'}>
+                {preemptive ? (activePolicy === 'SJF' ? 'SRTF (Preemptive)' : 'Preemptive Priority') : 'Non-Preemptive'}
+              </span>
+            </button>
+          )}
+
+          {activePolicy === 'RR' && (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground font-mono">Time Quantum:</span>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                value={quantum}
+                onChange={(e) => setQuantum(parseInt(e.target.value, 10))}
+                className="w-28 accent-primary"
+              />
+              <span className="text-xs font-mono font-bold text-primary">{quantum}ms</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Gantt Chart Section */}
       <Card className="p-6 space-y-4">
         <div className="flex items-center justify-between border-b border-border/40 pb-3">
           <div className="flex items-center gap-2">
             <h3 className="font-heading font-bold text-sm text-foreground">
-              Gantt Execution Timeline ({activePolicy} Policy)
+              Gantt Execution Timeline ({activePolicy} {activePolicy === 'SJF' && preemptive ? '(SRTF)' : ''})
             </h3>
             {activePolicy === 'RR' && (
               <span className="text-xs font-mono text-muted-foreground">Quantum = {quantum}ms</span>
@@ -147,22 +216,6 @@ export const SchedulerPage: React.FC = () => {
             ))}
           </div>
         </div>
-
-        {/* Round Robin Quantum Slider */}
-        {activePolicy === 'RR' && (
-          <div className="flex items-center gap-4 pt-2 max-w-sm">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Adjust Time Quantum:</span>
-            <input
-              type="range"
-              min="1"
-              max="10"
-              value={quantum}
-              onChange={(e) => setQuantum(parseInt(e.target.value))}
-              className="w-full accent-primary"
-            />
-            <span className="text-xs font-mono font-bold text-primary">{quantum}ms</span>
-          </div>
-        )}
       </Card>
 
       {/* Metrics & Editable Table */}
@@ -204,9 +257,10 @@ export const SchedulerPage: React.FC = () => {
             {/* Linux CFS relationship box */}
             <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 text-xs text-muted-foreground leading-relaxed">
               <strong className="text-foreground block mb-1">How Linux CFS Compares:</strong>
-              Linux does not use strict fixed quantum Round Robin. Instead, CFS assigns proportional slices 
-              calculated as: <code className="text-primary font-mono">vruntime += delta_exec * (NICE_0_LOAD / se-&gt;load.weight)</code>. 
-              The process with the lowest virtual runtime is dispatched next.
+              Linux does not use strict fixed quantum Round Robin or textbook priority inversion. 
+              Instead, CFS (Completely Fair Scheduler) assigns dynamic runtime slices via: 
+              <code className="text-primary font-mono block my-1">vruntime += delta_exec * (NICE_0_LOAD / se-&gt;load.weight)</code>
+              The runnable task with lowest virtual runtime in the red-black tree (cfs_rq) is picked next.
             </div>
           </Card>
         </div>
@@ -230,13 +284,13 @@ export const SchedulerPage: React.FC = () => {
                     <th className="p-2">Task</th>
                     <th className="p-2">Arrival (ms)</th>
                     <th className="p-2">Burst (ms)</th>
-                    <th className="p-2">Priority (1-5)</th>
+                    <th className="p-2">Priority (1=High)</th>
                     <th className="p-2 text-right">Waiting Time</th>
                     <th className="p-2 text-right">Turnaround</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {processes.map((p, idx) => (
+                  {processes.map((p) => (
                     <tr key={p.id} className="border-b border-border/20 hover:bg-secondary/20">
                       <td className="p-2 font-bold flex items-center gap-1.5" style={{ color: p.color }}>
                         <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
@@ -249,7 +303,7 @@ export const SchedulerPage: React.FC = () => {
                           max="20"
                           value={p.arrivalTime}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value) || 0;
+                            const val = parseInt(e.target.value, 10) || 0;
                             setProcesses(processes.map((x) => (x.id === p.id ? { ...x, arrivalTime: val } : x)));
                           }}
                           className="w-14 p-1 rounded bg-secondary border border-border text-foreground"
@@ -262,7 +316,7 @@ export const SchedulerPage: React.FC = () => {
                           max="30"
                           value={p.burstTime}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value) || 1;
+                            const val = parseInt(e.target.value, 10) || 1;
                             setProcesses(processes.map((x) => (x.id === p.id ? { ...x, burstTime: val } : x)));
                           }}
                           className="w-14 p-1 rounded bg-secondary border border-border text-foreground"
@@ -275,7 +329,7 @@ export const SchedulerPage: React.FC = () => {
                           max="10"
                           value={p.priority}
                           onChange={(e) => {
-                            const val = parseInt(e.target.value) || 1;
+                            const val = parseInt(e.target.value, 10) || 1;
                             setProcesses(processes.map((x) => (x.id === p.id ? { ...x, priority: val } : x)));
                           }}
                           className="w-14 p-1 rounded bg-secondary border border-border text-foreground"
@@ -310,13 +364,16 @@ export const SchedulerPage: React.FC = () => {
             {Object.entries(allResults).map(([pol, res]) => (
               <div key={pol} className="p-4 rounded-xl bg-secondary/50 border border-border/50 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-foreground">{pol}</span>
+                  <span className="font-bold text-sm text-foreground">
+                    {pol} {pol === 'SJF' && preemptive ? '(SRTF)' : ''}
+                  </span>
                   {pol === 'SJF' && <Badge variant="success">Lowest Wait</Badge>}
                 </div>
                 <div className="text-xs font-mono space-y-1 text-muted-foreground">
                   <div>Avg Wait: <strong className="text-foreground">{res.metrics.avgWaitingTime} ms</strong></div>
                   <div>Avg Turnaround: <strong className="text-foreground">{res.metrics.avgTurnaroundTime} ms</strong></div>
                   <div>Context Switches: <strong className="text-foreground">{res.metrics.contextSwitches}</strong></div>
+                  <div>CPU Util: <strong className="text-foreground">{res.metrics.cpuUtilization}%</strong></div>
                 </div>
               </div>
             ))}
