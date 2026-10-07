@@ -54,6 +54,16 @@ interface SimulationState {
   history: RunResult[];
   selectedHistoryId: string | null;
 
+  // Tour & Autopilot
+  tourActive: boolean;
+  setTourActive: (active: boolean) => void;
+  autopilotOpen: boolean;
+  setAutopilotOpen: (open: boolean) => void;
+
+  // Quiz persistence
+  quizBestScore: number;
+  setQuizBestScore: (score: number) => void;
+
   // Actions
   startSimulation: () => void;
   pauseSimulation: () => void;
@@ -99,6 +109,18 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   presentationMode: false,
   setPresentationMode: (val) => set({ presentationMode: val }),
+
+  tourActive: false,
+  setTourActive: (active) => set({ tourActive: active }),
+
+  autopilotOpen: false,
+  setAutopilotOpen: (open) => set({ autopilotOpen: open }),
+
+  quizBestScore: parseInt(localStorage.getItem('threadlab_quiz_best') || '0', 10),
+  setQuizBestScore: (score) => {
+    localStorage.setItem('threadlab_quiz_best', score.toString());
+    set({ quizBestScore: score });
+  },
 
   author: {
     studentName: 'Hariprasad S.',

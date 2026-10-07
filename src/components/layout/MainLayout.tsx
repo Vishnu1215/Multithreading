@@ -7,10 +7,15 @@ import { useRafSimulation } from '@/hooks/useRafSimulation';
 import { useSimulationStore } from '@/store/simulationStore';
 import { cn } from '@/lib/utils';
 
+import { GuidedTour } from './Tour';
+import { AutopilotModal } from './AutopilotModal';
+
 export const MainLayout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const presentationMode = useSimulationStore((s) => s.presentationMode);
+  const autopilotOpen = useSimulationStore((s) => s.autopilotOpen);
+  const setAutopilotOpen = useSimulationStore((s) => s.setAutopilotOpen);
 
   // Activate continuous 60fps RAF simulation clock
   useRafSimulation();
@@ -44,6 +49,12 @@ export const MainLayout: React.FC = () => {
 
       {/* Global Command Palette */}
       <CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} />
+
+      {/* Guided Tour */}
+      <GuidedTour />
+
+      {/* Demo Autopilot */}
+      <AutopilotModal open={autopilotOpen} onClose={() => setAutopilotOpen(false)} />
     </div>
   );
 };

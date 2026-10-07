@@ -22,13 +22,10 @@ const ReportPage = lazy(() => import('@/pages/ReportPage').then(m => ({ default:
 const HelpPage = lazy(() => import('@/pages/HelpPage').then(m => ({ default: m.HelpPage })));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 
+import { CpuDieLoader } from '@/components/ui/Skeleton';
+
 const FallbackLoader: React.FC = () => (
-  <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-4">
-    <div className="w-12 h-12 rounded-2xl border-2 border-primary border-t-transparent animate-spin" />
-    <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-      Allocating Task Context...
-    </span>
-  </div>
+  <CpuDieLoader message="Loading Task Context & Module Workspace..." />
 );
 
 export const router = createBrowserRouter([

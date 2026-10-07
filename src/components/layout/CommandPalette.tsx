@@ -35,6 +35,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose })
   const navigate = useNavigate();
   const toggleTheme = useSimulationStore((s) => s.toggleTheme);
   const startSimulation = useSimulationStore((s) => s.startSimulation);
+  const setTourActive = useSimulationStore((s) => s.setTourActive);
+  const setAutopilotOpen = useSimulationStore((s) => s.setAutopilotOpen);
+  const setConfig = useSimulationStore((s) => s.setConfig);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -71,8 +74,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose })
     { title: 'Case Study Article', category: 'Navigation', icon: BookOpen, action: () => navigate('/case-study') },
     { title: 'Assessment Quiz Module', category: 'Navigation', icon: CheckCircle2, action: () => navigate('/quiz') },
     { title: 'Report Export (PDF / CSV)', category: 'Navigation', icon: FileText, action: () => navigate('/report') },
-    { title: 'Help & Glossary (60+ OS Terms)', category: 'Navigation', icon: HelpCircle, action: () => navigate('/help') },
     { title: 'Start Simulation Run Now', category: 'Action', icon: Play, action: () => { startSimulation(); navigate('/simulator'); } },
+    { title: 'Launch Guided Onboarding Tour', category: 'Action', icon: Sparkles, action: () => setTourActive(true) },
+    { title: 'Launch Demo Autopilot (Hands-Free)', category: 'Action', icon: Sparkles, action: () => setAutopilotOpen(true) },
+    { title: 'Load Optimal Preset (4T / 4C Matrix)', category: 'Preset', icon: Play, action: () => { setConfig({ threadCount: 4, cores: 4, workload: 'matrix', syncMode: 'Mutex' }); navigate('/simulator'); } },
+    { title: 'Load Oversubscribed Preset (8T / 2C Prime)', category: 'Preset', icon: Play, action: () => { setConfig({ threadCount: 8, cores: 2, workload: 'prime', syncMode: 'Mutex' }); navigate('/simulator'); } },
+    { title: 'Load I/O Heavy Preset (4T File Grep)', category: 'Preset', icon: Play, action: () => { setConfig({ threadCount: 4, cores: 4, workload: 'file', syncMode: 'None' }); navigate('/simulator'); } },
     { title: 'Toggle Theme (Dark / Light)', category: 'Action', icon: Sun, action: () => toggleTheme() },
   ];
 
