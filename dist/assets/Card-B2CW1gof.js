@@ -1,0 +1,1 @@
+import{j as r,h as o}from"./index-DX5IoWWK.js";function e({className:a,glow:s=!1,children:n,...l}){return r.jsx("div",{className:o("rounded-2xl transition-all duration-200",s?"glass-panel-glow":"glass-panel",a),...l,children:n})}export{e as C};
