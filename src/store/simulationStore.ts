@@ -78,10 +78,10 @@ interface SimulationState {
 }
 
 const defaultAuthor: AuthorProfile = {
-  studentName: 'Hariprasad S.',
-  rollNo: 'CS-2026-M042',
-  guideName: 'Dr. V. K. Ramanathan, Dept of Computer Science',
-  courseName: 'CS402: Operating Systems & Advanced Architecture',
+  studentName: 'Vishnu Teja',
+  rollNo: '160124737112',
+  guideName: 'Dr. T. Prathima, Dept of Information Technology',
+  courseName: 'Operating Systems',
 };
 
 const getSavedAuthor = (): AuthorProfile => {

@@ -9,14 +9,14 @@ export const CaseStudyPage: React.FC = () => {
       <div className="space-y-3 border-b border-border/40 pb-6">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono bg-primary/10 text-primary border border-primary/20">
           <BookOpen className="w-3.5 h-3.5" />
-          <span>Department of Computer Science • Technical Report</span>
+          <span>Department of Information Technology • Technical Report</span>
         </div>
         <h1 className="text-3xl lg:text-4xl font-extrabold font-heading text-foreground tracking-tight leading-tight">
           Analysis of Multithreading in Linux: Performance Evaluation of Single-Threaded and Multi-Threaded Applications
         </h1>
         <div className="text-xs font-mono text-muted-foreground flex flex-wrap gap-4 pt-1">
-          <span>Author: Hariprasad S. (CS-2026-M042)</span>
-          <span>Advisor: Dr. V. K. Ramanathan</span>
+          <span>Author: Vishnu Teja (160124737112)</span>
+          <span>Advisor: Dr.T.Prathima</span>
           <span>Target: Linux Kernel 6.6 NPTL</span>
         </div>
       </div>
